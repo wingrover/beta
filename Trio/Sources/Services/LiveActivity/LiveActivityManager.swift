@@ -4,6 +4,7 @@ import CoreData
 import Foundation
 import Swinject
 import UIKit
+import WidgetKit
 
 @available(iOS 16.2, *) private struct ActiveActivity {
     let activity: Activity<LiveActivityAttributes>
@@ -425,6 +426,20 @@ final class LiveActivityData: ObservableObject {
             widgetItems: data.widgetItems
         )
 
+        // Before pushUpdate, which stops here when the Live Activity is switched off: the Meal widget must not depend on it.
+        writeQuickMealSnapshot(from: content)
         await pushUpdate(content)
+    }
+
+    /// Shares the glance values with the Meal widget through the app group; reloads it only when they changed.
+    @MainActor private func writeQuickMealSnapshot(from content: LiveActivityAttributes.ContentState) {
+        guard let store = QuickMeal.sharedStore else { return }
+        let snapshot = QuickMeal.Snapshot(
+            bg: content.bg, direction: content.direction, glucoseDate: content.date,
+            iob: content.detailedViewState.iob, cob: content.detailedViewState.cob
+        )
+        guard store.snapshot != snapshot else { return }
+        store.snapshot = snapshot
+        WidgetCenter.shared.reloadTimelines(ofKind: QuickMeal.widgetKind)
     }
 }

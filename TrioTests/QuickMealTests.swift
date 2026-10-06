@@ -129,3 +129,18 @@ import Testing
         #expect(state.amount == 4.2)
     }
 }
+
+@Suite("Quick Meal store") struct QuickMealStoreTests {
+    @Test func roundTrips() throws {
+        let defaults = try #require(UserDefaults(suiteName: "QuickMealStoreTests"))
+        defaults.removePersistentDomain(forName: "QuickMealStoreTests")
+        let store = try #require(QuickMeal.Store(defaults: defaults))
+        let snap = QuickMeal.Snapshot(bg: "7.8", direction: "↗", glucoseDate: Date(timeIntervalSince1970: 5), iob: 1.2, cob: 20)
+        store.snapshot = snap
+        store.pending = QuickMeal.Pending(carbs: 30, units: 3.1, createdAt: Date(timeIntervalSince1970: 9))
+        #expect(store.snapshot == snap)
+        #expect(store.pending?.units == 3.1)
+        store.pending = nil
+        #expect(store.pending == nil)
+    }
+}

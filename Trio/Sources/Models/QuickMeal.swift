@@ -61,3 +61,48 @@ enum QuickMeal {
         }
     }
 }
+
+extension QuickMeal {
+    static let widgetKind = "MealWidget"
+
+    struct Snapshot: Codable, Equatable {
+        var bg: String
+        var direction: String?
+        var glucoseDate: Date?
+        var iob: Decimal
+        var cob: Decimal
+    }
+
+    /// Small JSON values in the app-group UserDefaults, read by the widget and written by the app.
+    struct Store {
+        let defaults: UserDefaults
+        init?(defaults: UserDefaults?) {
+            guard let defaults else { return nil }
+            self.defaults = defaults
+        }
+
+        var snapshot: Snapshot? {
+            get { read("quickMeal.snapshot") }
+            nonmutating set { write(newValue, "quickMeal.snapshot") }
+        }
+
+        var pending: Pending? {
+            get { read("quickMeal.pending") }
+            nonmutating set { write(newValue, "quickMeal.pending") }
+        }
+
+        private func read<T: Decodable>(_ key: String) -> T? {
+            defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(T.self, from: $0) }
+        }
+
+        private func write<T: Encodable>(_ value: T?, _ key: String) {
+            if let value, let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+            else { defaults.removeObject(forKey: key) }
+        }
+    }
+
+    static var sharedStore: Store? {
+        let suite = Bundle.main.object(forInfoDictionaryKey: "AppGroupID") as? String
+        return Store(defaults: suite.flatMap { UserDefaults(suiteName: $0) })
+    }
+}
