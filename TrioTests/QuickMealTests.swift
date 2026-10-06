@@ -143,4 +143,21 @@ import Testing
         store.pending = nil
         #expect(store.pending == nil)
     }
+
+    /// Pending units go through JSON and are later compared with `!=` to a fresh Decimal in confirmCheck;
+    /// a lossy decode would make the widget's Confirm return .changed forever.
+    @Test(arguments: [Decimal(string: "0.05")!, Decimal(string: "3.15")!, Decimal(string: "12.35")!])
+    func pendingUnitsSurviveStorage(units: Decimal) throws {
+        // One suite per case: parameterised cases run in parallel.
+        let suite = "QuickMealStoreDecimalTests.\(units)"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        let store = try #require(QuickMeal.Store(defaults: defaults))
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        store.pending = QuickMeal.Pending(carbs: 30, units: units, createdAt: now.addingTimeInterval(-10))
+        let readBack = try #require(store.pending)
+        #expect(readBack.units == units)
+        #expect(QuickMeal.confirmCheck(pending: readBack, freshUnits: units, glucoseDate: now.addingTimeInterval(-10), now: now)
+            == .go)
+    }
 }
