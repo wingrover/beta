@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		08CA3A608227FB97B0A9041A /* MealIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE4C104C42ADA193FD559B3D /* MealIntent.swift */; };
+		BC6F76A3FFFB253BF516CA09 /* MealIntentRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43102943D0ABE02AB6AE878E /* MealIntentRequest.swift */; };
 		041D1E995A6AE92E9289DC49 /* TreatmentsDataFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1A7CA8C10C4403D4BBFA7 /* TreatmentsDataFlow.swift */; };
 		0D9A5E34A899219C5C4CDFAF /* HistoryStateModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9455FA2D92E77A6C4AFED8A3 /* HistoryStateModel.swift */; };
 		110AEDE32C5193D200615CC9 /* BolusIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110AEDE02C5193D100615CC9 /* BolusIntent.swift */; };
@@ -1108,6 +1110,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		CE4C104C42ADA193FD559B3D /* MealIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealIntent.swift; sourceTree = "<group>"; };
+		43102943D0ABE02AB6AE878E /* MealIntentRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealIntentRequest.swift; sourceTree = "<group>"; };
 		10E61A0885164081B57C357C /* NightscoutUploadSerializer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NightscoutUploadSerializer.swift; sourceTree = "<group>"; };
 		110AEDE02C5193D100615CC9 /* BolusIntent.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BolusIntent.swift; sourceTree = "<group>"; };
 		110AEDE12C5193D100615CC9 /* BolusIntentRequest.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BolusIntentRequest.swift; sourceTree = "<group>"; };
@@ -4051,6 +4055,8 @@
 			isa = PBXGroup;
 			children = (
 				B51897EA2EEA53B12E34E5E8 /* MealWidgetIntents.swift */,
+				CE4C104C42ADA193FD559B3D /* MealIntent.swift */,
+				43102943D0ABE02AB6AE878E /* MealIntentRequest.swift */,
 			);
 			path = Meal;
 			sourceTree = "<group>";
@@ -5222,6 +5228,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				08CA3A608227FB97B0A9041A /* MealIntent.swift in Sources */,
+				BC6F76A3FFFB253BF516CA09 /* MealIntentRequest.swift in Sources */,
 				DD5DC9F12CF3D97C00AB8703 /* AdjustmentsStateModel+Overrides.swift in Sources */,
 				3811DE2325C9D48300A708ED /* MainDataFlow.swift in Sources */,
 				C2A0A42F2CE03131003B98E8 /* ConstantValues.swift in Sources */,

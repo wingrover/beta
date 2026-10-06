@@ -31,6 +31,12 @@ struct AppShortcuts: AppShortcutsProvider {
             systemImageName: "list.bullet"
         )
         AppShortcut(
+            intent: MealIntent(),
+            phrases: ["\(.applicationName) meal", "Log a meal in \(.applicationName)"],
+            shortTitle: "Meal",
+            systemImageName: "fork.knife"
+        )
+        AppShortcut(
             intent: AddCarbPresetIntent(),
             phrases: [
                 "Add carbs in \(.applicationName)",
