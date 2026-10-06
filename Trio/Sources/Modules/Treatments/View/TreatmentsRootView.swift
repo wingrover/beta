@@ -380,10 +380,17 @@ extension Treatments {
                                     unitsText: String(localized: "U", comment: "Units for bolus amount")
                                 ).focused($focusedField, equals: .bolus)
                                     .onChange(of: state.amount) {
+                                        if focusedField == .bolus { state.userEditedBolus = true }
                                         Task {
                                             await state.updateForecasts()
                                         }
                                     }
+                            }
+
+                            if state.followBlockedByStaleGlucose && state.carbs > 0 {
+                                Text(String(localized: "Glucose is over 15 min old: enter the bolus yourself"))
+                                    .font(.footnote)
+                                    .foregroundStyle(.orange)
                             }
 
                             HStack {
@@ -440,6 +447,9 @@ extension Treatments {
                     if PropertyPersistentFlags.shared.hasSeenFatProteinOrderChange != true {
                         showFatProteinOrderBanner = true
                     }
+
+                    // Quick Meal: open on the carbs field; the delay lets the sheet finish presenting.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { focusedField = .carbs }
                 }
             }
             .onDisappear {
@@ -657,6 +667,13 @@ extension Treatments {
 
             // Note: when a pump bolus is in progress, the row is rendered by `bolusInProgressView`
             // (Home-style card), so this label's in-progress branch is intentionally absent.
+
+            // Quick Meal: one-line label for a carbs and/or pump bolus entry, e.g. "Log 40 g + bolus 4.2 U".
+            if !state.externalInsulin, !hasFatOrProtein,
+               let label = QuickMeal.screenLabel(carbs: state.carbs, units: state.amount)
+            {
+                return Text(label)
+            }
 
             switch (hasInsulin, hasCarbs, hasFatOrProtein) {
             case (true, true, true):

@@ -63,3 +63,32 @@ import Testing
         #expect(QuickMeal.screenLabel(carbs: 0, units: 0) == nil)
     }
 }
+
+@Suite("Quick Meal screen follow") struct QuickMealScreenTests {
+    let now = Date(timeIntervalSince1970: 1_000_000)
+
+    @Test func followsWhenFresh() {
+        let state = Treatments.StateModel()
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        #expect(state.amount == 4.2)
+        #expect(!state.followBlockedByStaleGlucose)
+    }
+
+    @Test func userEditStopsFollowing() {
+        let state = Treatments.StateModel()
+        state.amount = 2
+        state.userEditedBolus = true
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        #expect(state.amount == 2)
+    }
+
+    @Test func staleSetsZeroAndFlag() {
+        let state = Treatments.StateModel()
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-16 * 60), now: now)
+        #expect(state.amount == 0)
+        #expect(state.followBlockedByStaleGlucose)
+    }
+}

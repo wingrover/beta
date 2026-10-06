@@ -62,7 +62,24 @@ extension Treatments {
         var iobInsulinReduction: Decimal = 0
         var wholeCalc: Decimal = 0
         var factoredInsulin: Decimal = 0
-        var insulinCalculated: Decimal = 0
+        var insulinCalculated: Decimal = 0 {
+            didSet { applyFollow(glucoseDate: latestGlucose?.date, now: Date()) }
+        }
+
+        /// Quick Meal: true once the user types in the bolus field; the field then stops following the recommendation.
+        var userEditedBolus = false
+        /// Quick Meal: true when glucose is over 15 min old, so the bolus was not filled in.
+        var followBlockedByStaleGlucose = false
+
+        func applyFollow(glucoseDate: Date?, now: Date) {
+            followBlockedByStaleGlucose = !QuickMeal.isGlucoseFresh(glucoseDate, now: now)
+            if let followed = QuickMeal.followedBolus(
+                recommended: insulinCalculated, glucoseDate: glucoseDate, now: now, userEdited: userEditedBolus
+            ) {
+                amount = followed
+            }
+        }
+
         var dosingMode: DosingMode = .open
 
         /// What oref says is still needed on top of scheduled basal, discounted by the user's
@@ -244,6 +261,9 @@ extension Treatments {
             // Cancel in-flight work — the setup task awaits a full oref simulation.
             setupTask?.cancel()
             determinationUpdateTask?.cancel()
+
+            userEditedBolus = false
+            followBlockedByStaleGlucose = false
 
             broadcaster?.unregister(DeterminationObserver.self, observer: self)
             broadcaster?.unregister(BolusFailureObserver.self, observer: self)
@@ -499,10 +519,28 @@ extension Treatments {
                 await MainActor.run {
                     self.addButtonPressed = true
                 }
+                // Quick Meal: freeze the bolus field at the dose the user tapped, so a recalculation
+                // (for example after the carbs below are saved) cannot change it before it is enacted.
+                let wasUserEdited = await MainActor.run { () -> Bool in
+                    let wasEdited = self.userEditedBolus
+                    self.userEditedBolus = true
+                    return wasEdited
+                }
                 let isInsulinGiven = amount > 0
                 let isCarbsPresent = carbs > 0
                 let isFatPresent = fat > 0
                 let isProteinPresent = protein > 0
+
+                // Quick Meal: Face ID before anything (carbs included) is saved; refused means nothing is saved.
+                if isInsulinGiven, !externalInsulin {
+                    guard await authenticateBeforeSaving() else {
+                        await MainActor.run {
+                            self.userEditedBolus = wasUserEdited
+                            self.addButtonPressed = false
+                        }
+                        return
+                    }
+                }
 
                 if isCarbsPresent || isFatPresent || isProteinPresent {
                     await saveMeal()
@@ -538,7 +576,8 @@ extension Treatments {
             debug(.bolusState, "handleInsulin fired")
 
             if !isExternal {
-                await addPumpInsulin()
+                // Only reached from invokeTreatmentsTask, which has already asked Face ID for a pump bolus.
+                await addPumpInsulin(alreadyAuthenticated: true)
             } else {
                 await addExternalInsulin()
             }
@@ -629,7 +668,22 @@ extension Treatments {
             }
         }
 
-        func addPumpInsulin() async {
+        /// Quick Meal: asks Face ID once, before the meal is saved. A thrown error shows the existing alert.
+        private func authenticateBeforeSaving() async -> Bool {
+            do {
+                return try await unlockmanager.unlock()
+            } catch {
+                debug(.bolusState, "Authentication error for pump bolus: \(error)")
+                await MainActor.run {
+                    self.isAwaitingDeterminationResult = false
+                    self.showDeterminationFailureAlert = true
+                    self.determinationFailureMessage = parseAuthenticationError(from: error)
+                }
+                return false
+            }
+        }
+
+        func addPumpInsulin(alreadyAuthenticated: Bool = false) async {
             guard amount > 0 else {
                 showModal(for: nil)
                 return
@@ -638,7 +692,12 @@ extension Treatments {
             let maxAmount = Double(min(amount, maxBolus))
 
             do {
-                let authenticated = try await unlockmanager.unlock()
+                let authenticated: Bool
+                if alreadyAuthenticated {
+                    authenticated = true
+                } else {
+                    authenticated = try await unlockmanager.unlock()
+                }
                 if authenticated {
                     // show loading animation
                     await MainActor.run {
