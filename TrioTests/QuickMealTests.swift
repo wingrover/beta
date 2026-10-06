@@ -91,4 +91,41 @@ import Testing
         #expect(state.amount == 0)
         #expect(state.followBlockedByStaleGlucose)
     }
+
+    @Test func externalInsulinNeverFollows() {
+        let state = Treatments.StateModel()
+        state.externalInsulin = true
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        #expect(state.amount == 0)
+    }
+
+    @Test func tickingExternalClearsFollowedValue() {
+        let state = Treatments.StateModel()
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        #expect(state.amount == 4.2)
+        state.externalInsulin = true
+        #expect(state.amount == 0)
+    }
+
+    @Test func tickingExternalKeepsTypedValue() {
+        let state = Treatments.StateModel()
+        state.amount = 2
+        state.userEditedBolus = true
+        state.externalInsulin = true
+        #expect(state.amount == 2)
+    }
+
+    @Test func freezeReturnsTappedAmountAndStopsFollowing() {
+        let state = Treatments.StateModel()
+        state.insulinCalculated = 4.2
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        let tapped = state.freezeBolusForSubmit()
+        #expect(tapped == 4.2)
+        #expect(state.userEditedBolus)
+        state.insulinCalculated = 6.0
+        state.applyFollow(glucoseDate: now.addingTimeInterval(-60), now: now)
+        #expect(state.amount == 4.2)
+    }
 }

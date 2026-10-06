@@ -72,6 +72,7 @@ extension Treatments {
         var followBlockedByStaleGlucose = false
 
         func applyFollow(glucoseDate: Date?, now: Date) {
+            guard !externalInsulin else { return }
             followBlockedByStaleGlucose = !QuickMeal.isGlucoseFresh(glucoseDate, now: now)
             if let followed = QuickMeal.followedBolus(
                 recommended: insulinCalculated, glucoseDate: glucoseDate, now: now, userEdited: userEditedBolus
@@ -129,7 +130,18 @@ extension Treatments {
         var id_: String = ""
         var summary: String = ""
 
-        var externalInsulin: Bool = false
+        var externalInsulin: Bool = false {
+            // Quick Meal: the bolus field never follows the recommendation for external insulin, so a
+            // followed (not typed) value is cleared when External is ticked, and following resumes when unticked.
+            didSet {
+                guard externalInsulin != oldValue, !userEditedBolus else { return }
+                if externalInsulin {
+                    amount = 0
+                } else {
+                    applyFollow(glucoseDate: latestGlucose?.date, now: Date())
+                }
+            }
+        }
         var showInfo: Bool = false
         var glucoseFromPersistence: [GlucoseStored] = []
         /// Most recent reading. This model fetches glucose sorted `ascending: false`, so the
@@ -513,20 +525,22 @@ extension Treatments {
 
         // MARK: - Button tasks
 
+        /// Quick Meal: stops the bolus field following the recommendation and returns the dose on screen at the tap.
+        /// Called synchronously on the main thread from the button, before any await, so no recalculation can slip in.
+        func freezeBolusForSubmit() -> Decimal {
+            userEditedBolus = true
+            return amount
+        }
+
         func invokeTreatmentsTask() {
+            let wasUserEdited = userEditedBolus
+            let tappedAmount = freezeBolusForSubmit()
             Task {
                 debug(.bolusState, "invokeTreatmentsTask fired")
                 await MainActor.run {
                     self.addButtonPressed = true
                 }
-                // Quick Meal: freeze the bolus field at the dose the user tapped, so a recalculation
-                // (for example after the carbs below are saved) cannot change it before it is enacted.
-                let wasUserEdited = await MainActor.run { () -> Bool in
-                    let wasEdited = self.userEditedBolus
-                    self.userEditedBolus = true
-                    return wasEdited
-                }
-                let isInsulinGiven = amount > 0
+                let isInsulinGiven = tappedAmount > 0
                 let isCarbsPresent = carbs > 0
                 let isFatPresent = fat > 0
                 let isProteinPresent = protein > 0
@@ -547,7 +561,7 @@ extension Treatments {
                 }
 
                 if isInsulinGiven {
-                    await handleInsulin(isExternal: externalInsulin)
+                    await handleInsulin(isExternal: externalInsulin, tappedAmount: tappedAmount)
                 } else {
                     hideModal()
                     return
@@ -572,12 +586,12 @@ extension Treatments {
 
         // MARK: - Insulin
 
-        private func handleInsulin(isExternal: Bool) async {
+        private func handleInsulin(isExternal: Bool, tappedAmount: Decimal) async {
             debug(.bolusState, "handleInsulin fired")
 
             if !isExternal {
                 // Only reached from invokeTreatmentsTask, which has already asked Face ID for a pump bolus.
-                await addPumpInsulin(alreadyAuthenticated: true)
+                await addPumpInsulin(amount: tappedAmount, alreadyAuthenticated: true)
             } else {
                 await addExternalInsulin()
             }
@@ -683,13 +697,15 @@ extension Treatments {
             }
         }
 
-        func addPumpInsulin(alreadyAuthenticated: Bool = false) async {
-            guard amount > 0 else {
+        /// `tappedAmount` is the dose shown when the button was tapped; nil reads the field now (the original behaviour).
+        func addPumpInsulin(amount tappedAmount: Decimal? = nil, alreadyAuthenticated: Bool = false) async {
+            let dose = tappedAmount ?? amount
+            guard dose > 0 else {
                 showModal(for: nil)
                 return
             }
 
-            let maxAmount = Double(min(amount, maxBolus))
+            let maxAmount = Double(min(dose, maxBolus))
 
             do {
                 let authenticated: Bool
