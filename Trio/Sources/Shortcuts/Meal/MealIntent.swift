@@ -49,8 +49,14 @@ struct MealIntent: AppIntent {
                 return .result(dialog: IntentDialog(stringLiteral: String(localized: "The recommended bolus changed (now \(fresh.units.formatted()) U). Nothing was logged; run Meal again.")))
             }
             try await request.logCarbs(grams)
-            let outcome = try await request.bolus(units)
-            let reply = String(localized: "Logged \(grams.formatted()) g. ") + outcome.message
+            // The carbs are logged now: a bolus error must still say so, or a rerun would log them twice.
+            let reply: String
+            do {
+                let outcome = try await request.bolus(units)
+                reply = String(localized: "Logged \(grams.formatted()) g. ") + outcome.message
+            } catch {
+                reply = String(localized: "Logged \(grams.formatted()) g. Bolus NOT given: \(error.localizedDescription)")
+            }
             return .result(dialog: IntentDialog(stringLiteral: reply))
         }
     }

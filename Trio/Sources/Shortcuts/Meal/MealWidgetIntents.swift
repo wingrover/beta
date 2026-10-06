@@ -24,6 +24,7 @@ struct OpenMealIntent: LiveActivityIntent {
 struct MealPresetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Meal preset"
     static var isDiscoverable = false
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
     @Parameter(title: "Carbs") var carbs: Int
     init() {}
     init(carbs: Int) { self.carbs = carbs }
@@ -46,6 +47,7 @@ struct MealPresetIntent: LiveActivityIntent {
 struct MealConfirmIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Confirm meal"
     static var isDiscoverable = false
+    static var authenticationPolicy: IntentAuthenticationPolicy = .requiresAuthentication
 
     @MainActor func perform() async throws -> some IntentResult {
         #if !WIDGET_EXTENSION
@@ -83,10 +85,15 @@ struct MealConfirmIntent: LiveActivityIntent {
             } catch {
                 return String(localized: "Nothing logged: \(error.localizedDescription)")
             }
-            guard units > 0 else { return String(localized: "Logged \(grams) g. No bolus.") }
+            guard units > 0 else {
+                return request.bolusAllowed
+                    ? String(localized: "Logged \(grams) g. No bolus.")
+                    : String(localized: "Logged \(grams) g. No bolus: bolus via Shortcuts is off in settings.")
+            }
             do {
                 let outcome = try await request.bolus(units)
-                if outcome.sent { return String(localized: "Logged \(grams) g. ") + outcome.message }
+                // Unknown is neither sent nor refused: show its own text, never "NOT given".
+                if outcome.sent || outcome == .unknown { return String(localized: "Logged \(grams) g. ") + outcome.message }
                 return String(localized: "Logged \(grams) g. Bolus NOT given: \(outcome.reason ?? outcome.message)")
             } catch {
                 return String(localized: "Logged \(grams) g. Bolus NOT given: \(error.localizedDescription)")

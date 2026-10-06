@@ -53,7 +53,21 @@ final class MealIntentRequest: BaseIntentsRequest {
         }
 
         let bolusQuantity = apsManager.roundBolus(amount: requestedAmount)
-        await apsManager.enactBolus(amount: Double(bolusQuantity), isSMB: false, callback: nil)
+        // Deliberate departure from upstream BolusIntentRequest, which passes `callback: nil` and reports
+        // success whatever the pump did. Do not re-sync this with upstream on merges.
+        // enactBolus reports failure (pump suspended or bolusing, no pump, pump error) only through this
+        // callback, and calls it before it returns on every path except `amount <= 0`. No callback means
+        // we cannot say either way, so we never claim "sent" without a success callback.
+        var enacted: (success: Bool, message: String)?
+        await apsManager.enactBolus(amount: Double(bolusQuantity), isSMB: false) { success, message in
+            enacted = (success, message)
+        }
+        guard let enacted else { return QuickMeal.BolusOutcome.unknown }
+        guard enacted.success else {
+            return QuickMeal.BolusOutcome(
+                sent: false, message: String(localized: "Bolus not sent: ") + enacted.message, reason: enacted.message
+            )
+        }
         return QuickMeal.BolusOutcome(
             sent: true, message: String(localized: "Bolus \(bolusQuantity.formatted()) U sent."), reason: nil
         )

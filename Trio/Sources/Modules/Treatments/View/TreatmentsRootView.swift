@@ -529,6 +529,8 @@ extension Treatments {
                 } else {
                     Button {
                         if bolusWarning.shouldConfirm {
+                            // Freeze the amount: the confirm dialog must not change under the user's thumb.
+                            state.userEditedBolus = true
                             showConfirmDialogForBolusing = true
                         } else {
                             state.invokeTreatmentsTask()

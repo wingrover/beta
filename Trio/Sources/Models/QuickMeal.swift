@@ -71,6 +71,12 @@ extension QuickMeal {
         let sent: Bool
         let message: String
         let reason: String?
+
+        /// The pump never reported back, so whether the bolus went is unknown: never claim either way.
+        static var unknown: BolusOutcome {
+            let text = String(localized: "Bolus status unknown: check pump history before repeating.")
+            return BolusOutcome(sent: false, message: text, reason: text)
+        }
     }
 
     /// The last widget Confirm's result, shown above the presets so a refused or failed bolus is never silent.
@@ -80,6 +86,7 @@ extension QuickMeal {
 
         var isWarning: Bool {
             message.contains("NOT") || message.contains("Not logged") || message.contains("Nothing logged")
+                || message.contains("unknown")
         }
     }
 

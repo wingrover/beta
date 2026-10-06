@@ -173,6 +173,10 @@ import Testing
         #expect(QuickMeal.Outcome(message: "Logged 30 g. Bolus NOT given: blocked", date: date).isWarning)
         #expect(QuickMeal.Outcome(message: "Not logged: glucose is over 15 min old", date: date).isWarning)
         #expect(QuickMeal.Outcome(message: "Nothing logged: offline", date: date).isWarning)
+        let unknown = "Logged 30 g. " + QuickMeal.BolusOutcome.unknown.message
+        #expect(unknown == "Logged 30 g. Bolus status unknown: check pump history before repeating.")
+        #expect(QuickMeal.Outcome(message: unknown, date: date).isWarning)
+        #expect(!QuickMeal.BolusOutcome.unknown.sent)
     }
 
     /// Pending units go through JSON and are later compared with `!=` to a fresh Decimal in confirmCheck;
