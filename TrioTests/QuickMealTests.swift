@@ -179,6 +179,19 @@ import Testing
         #expect(!QuickMeal.BolusOutcome.unknown.sent)
     }
 
+    /// A pump that threw mid-bolus may have delivered: only enactBolus's pre-pump refusal is "not sent".
+    @Test func failedEnactClassification() {
+        let refused = QuickMeal.BolusOutcome.outcomeForFailedEnact(message: QuickMeal.BolusOutcome.enactRefusedMessage)
+        #expect(!refused.sent)
+        #expect(refused.message == "Bolus not sent: Error! Failed to enact bolus.")
+        #expect(refused.reason == "Error! Failed to enact bolus.")
+        #expect(refused != .unknown)
+
+        let pumpThrew = QuickMeal.BolusOutcome.outcomeForFailedEnact(message: "Error! Bolus failed with error: comms lost")
+        #expect(pumpThrew == .unknown)
+        #expect(QuickMeal.BolusOutcome.outcomeForFailedEnact(message: "") == .unknown)
+    }
+
     /// Pending units go through JSON and are later compared with `!=` to a fresh Decimal in confirmCheck;
     /// a lossy decode would make the widget's Confirm return .changed forever.
     @Test(arguments: [Decimal(string: "0.05")!, Decimal(string: "3.15")!, Decimal(string: "12.35")!])

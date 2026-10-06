@@ -77,6 +77,20 @@ extension QuickMeal {
             let text = String(localized: "Bolus status unknown: check pump history before repeating.")
             return BolusOutcome(sent: false, message: text, reason: text)
         }
+
+        /// APSManager.enactBolus's callback message when it refused before touching the pump (no pump, or
+        /// verifyStatus failed: suspended, already bolusing…). Same key and comment as APSManager, so it
+        /// resolves to the same localized text.
+        static var enactRefusedMessage: String {
+            String(localized: "Error! Failed to enact bolus.", comment: "Error message for enacting a bolus")
+        }
+
+        /// A `success == false` from enactBolus. Only its pre-pump refusal is certainly not given; anything
+        /// else (the pump threw mid-command) may have delivered, so it is unknown, never "not sent".
+        static func outcomeForFailedEnact(message: String) -> BolusOutcome {
+            guard message == enactRefusedMessage else { return .unknown }
+            return BolusOutcome(sent: false, message: String(localized: "Bolus not sent: ") + message, reason: message)
+        }
     }
 
     /// The last widget Confirm's result, shown above the presets so a refused or failed bolus is never silent.
