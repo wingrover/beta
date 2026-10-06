@@ -147,6 +147,12 @@ struct LiveActivityView: View {
                             }
                         }
                     }
+                    Button(intent: OpenMealIntent()) {
+                        Label(String(localized: "Meal"), systemImage: "fork.knife")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.green)
                 }
             }
             .addLiveActivityModifiers(isWatchOS: false)
@@ -167,6 +173,12 @@ struct LiveActivityView: View {
                                 .font(.caption)
                                 .foregroundStyle(.primary.opacity(0.7))
                         }
+                        Button(intent: OpenMealIntent()) {
+                            Label(String(localized: "Meal"), systemImage: "fork.knife")
+                                .font(.footnote.weight(.semibold))
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(.green)
                     }
                 }
             }
@@ -202,9 +214,19 @@ struct LiveActivityExpandedBottomView: View {
     var body: some View {
         if context.state.isInitialState {
             Text("Live Activity Expired. Open Trio to Refresh").minimumScaleFactor(0.01)
-        } else if context.state.useDetailedViewIOS {
-            LiveActivityChartView(context: context, additionalState: context.state.detailedViewState)
-                .addIsWatchOS()
+        } else {
+            VStack {
+                if context.state.useDetailedViewIOS {
+                    LiveActivityChartView(context: context, additionalState: context.state.detailedViewState)
+                        .addIsWatchOS()
+                }
+                Button(intent: OpenMealIntent()) {
+                    Label(String(localized: "Meal"), systemImage: "fork.knife")
+                        .font(.footnote.weight(.semibold))
+                }
+                .buttonStyle(.bordered)
+                .tint(.green)
+            }
         }
     }
 }

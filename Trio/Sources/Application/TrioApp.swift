@@ -535,6 +535,8 @@ extension Notification.Name {
         switch components?.host {
         case "device-select-resp":
             resolver.resolve(NotificationCenter.self)!.post(name: .openFromGarminConnect, object: url)
+        case "meal":
+            resolver.resolve(Router.self)!.mainModalScreen.send(.treatmentView)
         default: break
         }
     }
