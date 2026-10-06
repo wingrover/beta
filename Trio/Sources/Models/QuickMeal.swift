@@ -64,6 +64,24 @@ enum QuickMeal {
 
 extension QuickMeal {
     static let widgetKind = "MealWidget"
+    static let outcomeLifetime: TimeInterval = 10 * 60
+
+    /// What happened to a bolus request. `reason` says why it was refused (nil when it was sent).
+    struct BolusOutcome: Equatable {
+        let sent: Bool
+        let message: String
+        let reason: String?
+    }
+
+    /// The last widget Confirm's result, shown above the presets so a refused or failed bolus is never silent.
+    struct Outcome: Codable, Equatable {
+        var message: String
+        var date: Date
+
+        var isWarning: Bool {
+            message.contains("NOT") || message.contains("Not logged") || message.contains("Nothing logged")
+        }
+    }
 
     struct Snapshot: Codable, Equatable {
         var bg: String
@@ -89,6 +107,19 @@ extension QuickMeal {
         var pending: Pending? {
             get { read("quickMeal.pending") }
             nonmutating set { write(newValue, "quickMeal.pending") }
+        }
+
+        var lastOutcome: Outcome? {
+            get { read("quickMeal.lastOutcome") }
+            nonmutating set { write(newValue, "quickMeal.lastOutcome") }
+        }
+
+        /// Reads and clears the pending confirm in one synchronous step, so a second Confirm (or a Cancel)
+        /// arriving while the first awaits finds nothing and cannot log or dose again.
+        func claimPending() -> Pending? {
+            let claimed = pending
+            pending = nil
+            return claimed
         }
 
         private func read<T: Decodable>(_ key: String) -> T? {

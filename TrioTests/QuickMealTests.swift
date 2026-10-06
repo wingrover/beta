@@ -144,6 +144,37 @@ import Testing
         #expect(store.pending == nil)
     }
 
+    @Test func claimPendingClaimsOnce() throws {
+        let defaults = try #require(UserDefaults(suiteName: "QuickMealStoreClaimTests"))
+        defaults.removePersistentDomain(forName: "QuickMealStoreClaimTests")
+        let store = try #require(QuickMeal.Store(defaults: defaults))
+        let pending = QuickMeal.Pending(carbs: 30, units: 3.1, createdAt: Date(timeIntervalSince1970: 9))
+        store.pending = pending
+        #expect(store.claimPending() == pending)
+        #expect(store.claimPending() == nil)
+        #expect(store.pending == nil)
+    }
+
+    @Test func lastOutcomeRoundTrips() throws {
+        let defaults = try #require(UserDefaults(suiteName: "QuickMealStoreOutcomeTests"))
+        defaults.removePersistentDomain(forName: "QuickMealStoreOutcomeTests")
+        let store = try #require(QuickMeal.Store(defaults: defaults))
+        let outcome = QuickMeal.Outcome(message: "Logged 30 g. Bolus 3.1 U sent.", date: Date(timeIntervalSince1970: 9))
+        store.lastOutcome = outcome
+        #expect(store.lastOutcome == outcome)
+        store.lastOutcome = nil
+        #expect(store.lastOutcome == nil)
+    }
+
+    @Test func outcomeWarnings() {
+        let date = Date(timeIntervalSince1970: 9)
+        #expect(!QuickMeal.Outcome(message: "Logged 30 g. Bolus 3.1 U sent.", date: date).isWarning)
+        #expect(!QuickMeal.Outcome(message: "Logged 30 g. No bolus.", date: date).isWarning)
+        #expect(QuickMeal.Outcome(message: "Logged 30 g. Bolus NOT given: blocked", date: date).isWarning)
+        #expect(QuickMeal.Outcome(message: "Not logged: glucose is over 15 min old", date: date).isWarning)
+        #expect(QuickMeal.Outcome(message: "Nothing logged: offline", date: date).isWarning)
+    }
+
     /// Pending units go through JSON and are later compared with `!=` to a fresh Decimal in confirmCheck;
     /// a lossy decode would make the widget's Confirm return .changed forever.
     @Test(arguments: [Decimal(string: "0.05")!, Decimal(string: "3.15")!, Decimal(string: "12.35")!])

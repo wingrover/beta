@@ -34,7 +34,56 @@ final class MealIntentRequest: BaseIntentsRequest {
         )
     }
 
-    func bolus(_ units: Decimal) async throws -> String {
-        try await BolusIntentRequest().bolus(Double(truncating: units as NSNumber))
+    /// BolusIntentRequest.bolus's steps (same setting check, validator, rounding and enact call), returning
+    /// whether the bolus was sent so a refusal is never mistaken for a delivery.
+    func bolus(_ units: Decimal) async throws -> QuickMeal.BolusOutcome {
+        guard settingsManager.settings.bolusShortcut == .limitWithSafetyChecks else {
+            let reason = String(localized: "bolus via Shortcuts is off in settings.")
+            return QuickMeal.BolusOutcome(sent: false, message: String(localized: "Bolus not sent: ") + reason, reason: reason)
+        }
+        let requestedAmount = units
+        let validation = try await bolusSafetyValidator.validate(bolusAmount: requestedAmount)
+
+        if case let .rejected(reason) = validation {
+            let text = reason.mealShortcutMessage(
+                requestedAmount: requestedAmount,
+                pumpMaxBolus: settingsManager.pumpSettings.maxBolus
+            )
+            return QuickMeal.BolusOutcome(sent: false, message: String(localized: "Bolus not sent: ") + text, reason: text)
+        }
+
+        let bolusQuantity = apsManager.roundBolus(amount: requestedAmount)
+        await apsManager.enactBolus(amount: Double(bolusQuantity), isSMB: false, callback: nil)
+        return QuickMeal.BolusOutcome(
+            sent: true, message: String(localized: "Bolus \(bolusQuantity.formatted()) U sent."), reason: nil
+        )
+    }
+}
+
+/// Copy of BolusIntentRequest.swift's private `shortcutMessage` (private there; that upstream file is left unedited).
+private extension BolusSafetyRejection {
+    func mealShortcutMessage(requestedAmount: Decimal, pumpMaxBolus: Decimal) -> String {
+        switch self {
+        case .exceedsMaxBolus:
+            return String(
+                localized:
+                "The bolus cannot be larger than the pump setting max bolus (\(pumpMaxBolus.description))."
+            )
+        case .iobUnavailable:
+            return String(
+                localized:
+                "Bolus blocked: current IOB is not available."
+            )
+        case let .exceedsMaxIOB(currentIOB, maxIOB):
+            return String(
+                localized:
+                "Bolus blocked: a \(requestedAmount.formatted()) U bolus would exceed max IOB (\(maxIOB.formatted()) U). Current IOB: \(currentIOB.formatted()) U."
+            )
+        case .recentBolusWithinWindow:
+            return String(
+                localized:
+                "Bolus blocked: a significant bolus was delivered within the last \(BolusSafetyEvaluator.recentBolusWindowMinutes) minutes."
+            )
+        }
     }
 }

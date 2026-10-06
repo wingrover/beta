@@ -49,8 +49,9 @@ struct MealIntent: AppIntent {
                 return .result(dialog: IntentDialog(stringLiteral: String(localized: "The recommended bolus changed (now \(fresh.units.formatted()) U). Nothing was logged; run Meal again.")))
             }
             try await request.logCarbs(grams)
-            let reply = try await request.bolus(units)
-            return .result(dialog: IntentDialog(stringLiteral: String(localized: "Logged \(grams.formatted()) g. ") + reply))
+            let outcome = try await request.bolus(units)
+            let reply = String(localized: "Logged \(grams.formatted()) g. ") + outcome.message
+            return .result(dialog: IntentDialog(stringLiteral: reply))
         }
     }
 }
