@@ -215,7 +215,7 @@ enum QuickMeal {
 ```
 
 - [ ] **Step 3:** Add `QuickMeal.swift` to the app target (group `Models`, Sources phase `388E595425AD948C0019842D`) and `QuickMealTests.swift` to TrioTests (group `38FCF3EE25E9028E0078B0D1`, phase `38FCF3E925E9028E0078B0D1`), per Task 0's recipe.
-- [ ] **Step 4:** Commit `quick meal: rules and tests`, push, run CI. Expected: green, `Quick Meal rules` suite listed with 17 passing tests (`gh run view <id> --log | grep -i "quick meal"`). If the label test fails on number formatting (`4.2` vs locale), fix the test's expectation only if CI's locale is the cause, and say so in the commit.
+- [ ] **Step 4:** Commit `quick meal: rules and tests`, push, run CI. Expected: green, `Quick Meal rules` suite listed with 16 passing tests (`gh run view <id> --log | grep -i "quick meal"`). If the label test fails on number formatting (`4.2` vs locale), fix the test's expectation only if CI's locale is the cause, and say so in the commit.
 
 ---
 
