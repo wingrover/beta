@@ -104,7 +104,7 @@ struct MealWidget: Widget {
         .configurationDisplayName("Meal")
         .description("Glucose at a glance, and preset carbs with the recommended bolus.")
         .supportedFamilies([.systemMedium])
-        // Dosing buttons stay on the phone: not on a Mac's desktop, not in StandBy or CarPlay.
-        .disfavoredLocations([.iPhoneWidgetsOnMac, .standBy, .carPlay], for: [.systemMedium])
+        // Dosing buttons stay on the phone: not on a Mac's desktop, not in StandBy.
+        .disfavoredLocations([.iPhoneWidgetsOnMac, .standBy], for: [.systemMedium])
     }
 }
