@@ -16,6 +16,9 @@ struct MealIntent: AppIntent {
     @MainActor func perform() async throws -> some ProvidesDialog {
         let request = MealIntentRequest()
         let grams = Decimal(min(carbs, Int(truncating: request.settingsManager.settings.maxCarbs as NSNumber)))
+        guard grams > 0 else {
+            return .result(dialog: IntentDialog(stringLiteral: String(localized: "Carbs must be more than 0 g.")))
+        }
         let (units, glucoseDate) = await request.recommendation(carbs: grams)
         switch QuickMeal.decide(carbs: grams, recommended: units, glucoseDate: glucoseDate, now: Date(),
                                 bolusAllowed: request.bolusAllowed) {
@@ -33,6 +36,18 @@ struct MealIntent: AppIntent {
         case let .carbsAndBolus(grams, units):
             try await requestConfirmation(result: .result(dialog: IntentDialog(stringLiteral:
                 String(localized: "Log \(grams.formatted()) g and bolus \(units.formatted()) U?"))))
+            // The confirm dialog can sit open for minutes: re-check before anything is logged.
+            let fresh = await request.recommendation(carbs: grams)
+            let recheck = QuickMeal.decide(
+                carbs: grams, recommended: fresh.units, glucoseDate: fresh.glucoseDate, now: Date(),
+                bolusAllowed: request.bolusAllowed
+            )
+            guard recheck == .carbsAndBolus(carbs: grams, units: units) else {
+                if recheck == .stale {
+                    return .result(dialog: IntentDialog(stringLiteral: String(localized: "Glucose is over 15 min old. Nothing was logged; use the app.")))
+                }
+                return .result(dialog: IntentDialog(stringLiteral: String(localized: "The recommended bolus changed (now \(fresh.units.formatted()) U). Nothing was logged; run Meal again.")))
+            }
             try await request.logCarbs(grams)
             let reply = try await request.bolus(units)
             return .result(dialog: IntentDialog(stringLiteral: String(localized: "Logged \(grams.formatted()) g. ") + reply))
